@@ -1,0 +1,39 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+@model IEnumerable<GaugeListModel>;
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+</div>
+<div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col">Popis</th>
+                <th scope="col">Hodnota</th>
+                <th scope="col">Typ</th>
+                <th scope="col">&nbsp;</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr scope="row">
+                    <td>@item.Description</td>
+                    <td>@item.LastValue</td>
+                    <td>@item.Type</td>
+                    <td>
+                        <form method="post" asp-route="AddNewValue">
+                            <input type="text" name="newValue" class="form-control" value="@item.NewValue" />
+                            <input type="hidden" name="id" value="@item.Id" />
+                            <input type="submit" class="btn btn-primary" value="Uložit" />
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

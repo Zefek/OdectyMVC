@@ -1,0 +1,9 @@
+.gitattributes
+/.vs/OdectyMVC/config
+/.vs
+OdectyMVC/appsettings.json
+/OdectyMVC/bin
+OdectyMVC/appsettings.Development.json
+OdectyMVC/GaugeList.json
+/OdectyMVC/obj
+/OdectyMVC/Properties
