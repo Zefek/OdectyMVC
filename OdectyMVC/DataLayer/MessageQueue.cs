@@ -21,7 +21,7 @@ namespace OdectyMVC.DataLayer
             factory.HostName = options.Value.HostName;
             factory.UserName = options.Value.UserName;
             factory.Password = options.Value.Password;
-
+            factory.VirtualHost = options.Value.VirtualHost;
             connection = factory.CreateConnection();
             model = connection.CreateModel();
             this.options = options;
