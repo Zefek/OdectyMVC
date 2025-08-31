@@ -6,5 +6,6 @@ namespace OdectyMVC.Application
     {
         Task AddNewValue(int gaugeId, decimal value);
         Task<IEnumerable<GaugeListModel>> GetGaugeList();
+        Task UpdateGaugeState(int gaugeId, decimal value);
     }
 }
