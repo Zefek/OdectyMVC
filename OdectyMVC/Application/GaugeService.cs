@@ -23,5 +23,12 @@ namespace OdectyMVC.Application
         {
             return await context.GaugeListModelRepository.GetGaugeList();
         }
+
+        public async Task UpdateGaugeState(int gaugeId, decimal value)
+        {
+            var gauge = await context.GaugeRepository.GetGauge(gaugeId);
+            gauge.LastValue = value;
+            await context.SaveChangesAsync();
+        }
     }
 }

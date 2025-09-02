@@ -13,6 +13,8 @@ builder.Services.AddScoped<GaugeDbContext>();
 builder.Services.AddScoped<IGaugeRepository, GaugeRepository>();
 builder.Services.AddScoped<IGaugeListModelRepository, GaugeListModelRepository>();
 builder.Services.AddSingleton<IMessageQueue, MessageQueue>();
+builder.Services.AddSingleton<RabbitMQProvider>();
+builder.Services.AddHostedService<IncomeMessageBackgroundService>();
 
 var app = builder.Build();
 

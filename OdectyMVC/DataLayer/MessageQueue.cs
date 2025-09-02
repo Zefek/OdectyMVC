@@ -4,8 +4,10 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OdectyMVC.Business;
 using OdectyMVC.Contracts;
+using OdectyMVC.Dto;
 using RabbitMQ.Client;
 using System.Text;
+using System.Threading.Channels;
 
 namespace OdectyMVC.DataLayer
 {
@@ -15,16 +17,10 @@ namespace OdectyMVC.DataLayer
         private readonly IModel model;
         private readonly IOptions<RabbitMQSettings> options;
 
-        public MessageQueue(IOptions<RabbitMQSettings> options) 
+        public MessageQueue(RabbitMQProvider rabbitMQProvider, IOptions<RabbitMQSettings> options) 
         {
-            var factory = new ConnectionFactory();
-            factory.HostName = options.Value.HostName;
-            factory.UserName = options.Value.UserName;
-            factory.Password = options.Value.Password;
-            factory.VirtualHost = options.Value.VirtualHost;
-            connection = factory.CreateConnection();
-            model = connection.CreateModel();
             this.options = options;
+            model = rabbitMQProvider.CreateModel();
         }
 
         public Task Publish(int gaugeId, decimal value, DateTime datetime)
@@ -35,7 +31,7 @@ namespace OdectyMVC.DataLayer
                 Value = value,
                 Datetime = datetime
             };
-            model.BasicPublish(options.Value.ExchangeName, gaugeId.ToString(), null, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(newValue)));
+            model.BasicPublish(options.Value.ExchangeName, MessageQueueRoutingKeys.GaugeMVC_Gauge_Statechanged, null, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(newValue)));
             return Task.CompletedTask;
         }
     }
