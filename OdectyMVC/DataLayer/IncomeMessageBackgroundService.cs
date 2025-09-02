@@ -33,7 +33,7 @@ public class IncomeMessageBackgroundService : BackgroundService, IDisposable
             var gaugeState = JsonConvert.DeserializeObject<dynamic>(message);
             using var scope = serviceProvider.CreateScope();
             var gaugeService = scope.ServiceProvider.GetRequiredService<IGaugeService>();
-            await gaugeService.UpdateGaugeState(gaugeState.gaugeId, gaugeState.value);
+            await gaugeService.UpdateGaugeState((int)gaugeState.gaugeId, (decimal)gaugeState.value);
             channel.BasicAck(ea.DeliveryTag, false);
         };
         foreach (var queue in options.Value.QueueMappings.Select(q => q.QueueName).Distinct())
