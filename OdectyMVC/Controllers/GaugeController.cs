@@ -3,9 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using OdectyMVC.Application;
 
 namespace OdectyMVC.Controllers;
-
-[ApiController]
+#if !DEBUG
 [Authorize(AuthenticationSchemes = "basic")]
+#endif
+[ApiController]
 [Route("api/[controller]")]
 public class GaugeController : Controller
 {

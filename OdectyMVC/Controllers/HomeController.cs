@@ -7,7 +7,9 @@ using System.Diagnostics;
 
 namespace OdectyMVC.Controllers
 {
+#if !DEBUG
     [Authorize]
+#endif
     public class HomeController : Controller
     {
         private readonly IGaugeService service;

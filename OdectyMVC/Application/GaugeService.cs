@@ -46,7 +46,7 @@ namespace OdectyMVC.Application
         public async Task SaveFileForGauge(int gaugeId, IFormFile file, CancellationToken cancellationToken)
         {
             FileInfo fi = new FileInfo(string.Format(options.Value.Path, gaugeId, file.FileName));
-            var fileName = (fi.Name + "_" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")).Replace(":", "_") + fi.Extension;
+            var fileName = fi.Name.Substring(0, fi.Name.Length - fi.Extension.Length) + "_" + Guid.NewGuid() + fi.Extension;
             using var stream = File.Create(string.Format(options.Value.Path, gaugeId, fileName));
             await file.CopyToAsync(stream, cancellationToken);
             await stream.FlushAsync(cancellationToken);

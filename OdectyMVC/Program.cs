@@ -27,13 +27,13 @@ builder.Services.AddSingleton<IMessageQueue, MessageQueue>();
 builder.Services.AddSingleton<RabbitMQProvider>();
 builder.Services.AddHostedService<IncomeMessageBackgroundService>();
 
+#if !DEBUG
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
 })
 .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("basic", null)
 .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
-
 
 builder.Services.AddAuthorization(options =>
 {
@@ -53,7 +53,7 @@ builder.Services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.Authentic
         {
             var email = context.Principal.FindFirst("preferred_username")?.Value
                         ?? context.Principal.FindFirst(ClaimTypes.Email)?.Value;
-            if(string.IsNullOrEmpty(email) || !allowedEmails.Contains(email.ToLowerInvariant()))
+            if (string.IsNullOrEmpty(email) || !allowedEmails.Contains(email.ToLowerInvariant()))
             {
                 context.Fail("Unauthorized access");
             }
@@ -63,27 +63,32 @@ builder.Services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.Authentic
 });
 builder.Services.AddSwaggerGen(options =>
 {
-    options.AddSecurityDefinition("basic", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    options.AddSecurityDefinition("basic", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Type = SecuritySchemeType.Http,
         Scheme = "basic",
     });
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
-        {
-            new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
+                new OpenApiSecurityScheme
                 {
-                    Id = "basic",
-                    Type = ReferenceType.SecurityScheme
-                }
-            },
-            Array.Empty<string>()
-        }
+                    Reference = new OpenApiReference
+                    {
+                        Id = "basic",
+                        Type = ReferenceType.SecurityScheme
+                    }
+                },
+                Array.Empty<string>()
+            }
     });
 });
+#else
+builder.Services.AddSwaggerGen();
+#endif
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -91,16 +96,19 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
 }
-
+#if DEBUG
 app.UseSwagger();
 app.UseSwaggerUI();
+#endif
 
 app.UseStaticFiles();
 
 app.UseRouting();
 
+#if !DEBUG
 app.UseAuthentication();
 app.UseAuthorization();
+#endif
 
 app.MapControllerRoute(
     name: "default",
