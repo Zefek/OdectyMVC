@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OdectyMVC.Application;
 using OdectyMVC.Models;
@@ -9,18 +10,16 @@ namespace OdectyMVC.Controllers
     [Authorize]
     public class HomeController : Controller
     {
-        private readonly ILogger<HomeController> _logger;
         private readonly IGaugeService service;
 
-        public HomeController(ILogger<HomeController> logger, IGaugeService service)
+        public HomeController(IGaugeService service)
         {
-            _logger = logger;
             this.service=service;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(CancellationToken cancellationToken)
         {
-            return View(await service.GetGaugeList());
+            return View(await service.GetGaugeList(cancellationToken));
         }
 
         public IActionResult Privacy()
@@ -36,9 +35,9 @@ namespace OdectyMVC.Controllers
 
         [HttpPost]
         [Route("Home/Index", Name = "AddNewValue")]
-        public async Task<IActionResult> AddNewValue(decimal newValue, int id)
+        public async Task<IActionResult> AddNewValue(decimal newValue, int id, CancellationToken cancellationToken)
         {
-            await service.AddNewValue(id, newValue);
+            await service.AddNewValue(id, newValue, cancellationToken);
             return RedirectToAction("Index");
         }
     }

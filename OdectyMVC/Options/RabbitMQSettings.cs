@@ -1,4 +1,6 @@
-﻿namespace OdectyMVC.DataLayer;
+﻿using OdectyMVC.DataLayer;
+
+namespace OdectyMVC.Options;
 
 public class RabbitMQSettings
 {

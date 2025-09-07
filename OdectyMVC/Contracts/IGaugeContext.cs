@@ -5,6 +5,6 @@
         IGaugeRepository GaugeRepository { get; }
         IGaugeListModelRepository GaugeListModelRepository { get; }
         IMessageQueue MessageQueue { get; }
-        Task SaveChangesAsync();
+        Task SaveChangesAsync(CancellationToken cancellationToken);
     }
 }

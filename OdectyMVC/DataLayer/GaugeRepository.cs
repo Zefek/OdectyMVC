@@ -13,7 +13,7 @@ namespace OdectyMVC.DataLayer
             this.gaugeContext=gaugeContext;
         }
 
-        public Task<Gauge> GetGauge(int id)
+        public Task<Gauge> GetGauge(int id, CancellationToken cancellationToken)
         {
             return Task.FromResult(gaugeContext.Gauges.FirstOrDefault(k => k.Id == id));
         }

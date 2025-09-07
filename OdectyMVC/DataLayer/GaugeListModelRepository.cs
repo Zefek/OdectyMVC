@@ -13,7 +13,7 @@ namespace OdectyMVC.DataLayer
             this.gaugeContext=gaugeContext;
         }
 
-        public Task<IEnumerable<GaugeListModel>> GetGaugeList()
+        public Task<IEnumerable<GaugeListModel>> GetGaugeList(CancellationToken cancellationToken)
         {
             return Task.FromResult(gaugeContext.GaugeModels.OrderBy(k => k.Id) as IEnumerable<GaugeListModel>);
         }

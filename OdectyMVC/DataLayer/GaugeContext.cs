@@ -24,7 +24,7 @@ namespace OdectyMVC.DataLayer
         public IGaugeListModelRepository GaugeListModelRepository { get; }
         public IMessageQueue MessageQueue { get; }
 
-        public Task SaveChangesAsync()
+        public Task SaveChangesAsync(CancellationToken cancellationToken)
         {
             context.SaveChanges();
             return Task.CompletedTask;
