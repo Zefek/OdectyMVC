@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using OdectyMVC.Business;
+﻿using OdectyMVC.Business;
 using OdectyMVC.Contracts;
 
 namespace OdectyMVC.DataLayer

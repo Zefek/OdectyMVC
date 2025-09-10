@@ -28,12 +28,9 @@ builder.Services.AddSingleton<RabbitMQProvider>();
 builder.Services.AddHostedService<IncomeMessageBackgroundService>();
 
 #if !DEBUG
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
-})
-.AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("basic", null)
-.AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
+builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("basic", null)
+    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
 
 builder.Services.AddAuthorization(options =>
 {
