@@ -1,15 +1,22 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Identity.Web;
+using Microsoft.OpenApi.Models;
+using OdectyMVC;
 using OdectyMVC.Application;
 using OdectyMVC.Contracts;
 using OdectyMVC.DataLayer;
+using OdectyMVC.Options;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<RabbitMQSettings>(builder.Configuration.GetSection("RabbitMQSettings"));
+builder.Services.Configure<GaugeImageLocation>(builder.Configuration.GetSection("GaugeImageLocation"));
+builder.Services.Configure<BasicAuthentication>(builder.Configuration.GetSection("BasicAuthentication"));
 builder.Services.AddScoped<IGaugeService, GaugeService>();
 builder.Services.AddScoped<IGaugeContext, GaugeContext>();
 builder.Services.AddScoped<GaugeDbContext>();
@@ -20,7 +27,9 @@ builder.Services.AddSingleton<IMessageQueue, MessageQueue>();
 builder.Services.AddSingleton<RabbitMQProvider>();
 builder.Services.AddHostedService<IncomeMessageBackgroundService>();
 
+#if !DEBUG
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("basic", null)
     .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
 
 builder.Services.AddAuthorization(options =>
@@ -41,7 +50,7 @@ builder.Services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.Authentic
         {
             var email = context.Principal.FindFirst("preferred_username")?.Value
                         ?? context.Principal.FindFirst(ClaimTypes.Email)?.Value;
-            if(string.IsNullOrEmpty(email) || !allowedEmails.Contains(email.ToLowerInvariant()))
+            if (string.IsNullOrEmpty(email) || !allowedEmails.Contains(email.ToLowerInvariant()))
             {
                 context.Fail("Unauthorized access");
             }
@@ -49,6 +58,33 @@ builder.Services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.Authentic
         }
     };
 });
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("basic", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "basic",
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Id = "basic",
+                        Type = ReferenceType.SecurityScheme
+                    }
+                },
+                Array.Empty<string>()
+            }
+    });
+});
+#else
+builder.Services.AddSwaggerGen();
+#endif
+
 
 var app = builder.Build();
 
@@ -57,16 +93,22 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
 }
+#if DEBUG
+app.UseSwagger();
+app.UseSwaggerUI();
+#endif
 
 app.UseStaticFiles();
 
 app.UseRouting();
 
+#if !DEBUG
 app.UseAuthentication();
 app.UseAuthorization();
+#endif
 
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{value?}");
-
+app.MapControllers();
 app.Run();

@@ -4,6 +4,6 @@ namespace OdectyMVC.Contracts
 {
     public interface IMessageQueue
     {
-        Task Publish(int gaugeId, decimal value, DateTime datetime);
+        Task Publish(string routingKey, object message, CancellationToken cancellationToken);
     }
 }

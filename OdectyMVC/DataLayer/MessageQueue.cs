@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using OdectyMVC.Business;
 using OdectyMVC.Contracts;
 using OdectyMVC.Dto;
+using OdectyMVC.Options;
 using RabbitMQ.Client;
 using System.Text;
 using System.Threading.Channels;
@@ -13,26 +14,21 @@ namespace OdectyMVC.DataLayer
 {
     public class MessageQueue : IMessageQueue
     {
-        private readonly IConnection connection;
-        private readonly IModel model;
+        private readonly IChannel model;
         private readonly IOptions<RabbitMQSettings> options;
 
         public MessageQueue(RabbitMQProvider rabbitMQProvider, IOptions<RabbitMQSettings> options) 
         {
             this.options = options;
-            model = rabbitMQProvider.CreateModel();
+            model = rabbitMQProvider.CreateModel().Result;
         }
 
-        public Task Publish(int gaugeId, decimal value, DateTime datetime)
+        public async Task Publish(string routingKey, object message, CancellationToken cancellationToken)
         {
-            var newValue = new
+            if(model != null)
             {
-                GaugeId = gaugeId,
-                Value = value,
-                Datetime = datetime
-            };
-            model.BasicPublish(options.Value.ExchangeName, MessageQueueRoutingKeys.GaugeMVC_Gauge_Statechanged, null, Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(newValue)));
-            return Task.CompletedTask;
+                await model.BasicPublishAsync(options.Value.ExchangeName, routingKey, true, new ReadOnlyMemory<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message))), cancellationToken);
+            }
         }
     }
 }
