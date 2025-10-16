@@ -8,6 +8,7 @@ using OdectyMVC;
 using OdectyMVC.Application;
 using OdectyMVC.Contracts;
 using OdectyMVC.DataLayer;
+using OdectyMVC.Middleware;
 using OdectyMVC.Options;
 using System.Security.Claims;
 
@@ -26,6 +27,7 @@ builder.Services.AddScoped<IGaugeListModelRepository, GaugeListModelRepository>(
 builder.Services.AddSingleton<IMessageQueue, MessageQueue>();
 builder.Services.AddSingleton<RabbitMQProvider>();
 builder.Services.AddHostedService<IncomeMessageBackgroundService>();
+builder.Logging.AddEventLog(conf=>conf.SourceName="OdectyMVC");
 
 #if !DEBUG
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
@@ -87,7 +89,7 @@ builder.Services.AddSwaggerGen();
 
 
 var app = builder.Build();
-
+app.UseMiddleware<RequestLogMiddleware>();
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {

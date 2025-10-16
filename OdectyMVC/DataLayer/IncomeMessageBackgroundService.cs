@@ -39,12 +39,9 @@ public class IncomeMessageBackgroundService : BackgroundService, IDisposable
                 await gaugeService.UpdateGaugeState((int)gaugeState.gaugeId, (decimal)gaugeState.value, stoppingToken);
                 await channel.BasicAckAsync(ea.DeliveryTag, false, stoppingToken);
             };
-            foreach (var queue in options.Value.QueueMappings.Select(q => q.QueueName).Distinct())
-            {
-                await channel.BasicConsumeAsync(queue: queue,
-                                 autoAck: false,
-                                 consumer: consumer, stoppingToken);
-            }
+            await channel.BasicConsumeAsync(queue: QueuesToConsume.OdectyMVC,
+                             autoAck: false,
+                             consumer: consumer, stoppingToken);
         }
     }
 
