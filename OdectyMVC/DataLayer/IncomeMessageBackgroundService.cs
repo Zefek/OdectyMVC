@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using OdectyMVC.Application;
-using OdectyMVC.Contracts;
 using OdectyMVC.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;

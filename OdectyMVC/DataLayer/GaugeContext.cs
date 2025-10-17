@@ -1,7 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using OdectyMVC.Business;
-using OdectyMVC.Contracts;
-using OdectyMVC.Models;
+﻿using OdectyMVC.Contracts;
 
 namespace OdectyMVC.DataLayer
 {
@@ -14,10 +11,10 @@ namespace OdectyMVC.DataLayer
             IMessageQueue messageQueue,
             GaugeDbContext context)
         {
-            GaugeRepository=gaugeRepository;
-            GaugeListModelRepository=gaugeListModelRepository;
-            MessageQueue=messageQueue;
-            this.context=context;
+            GaugeRepository = gaugeRepository;
+            GaugeListModelRepository = gaugeListModelRepository;
+            MessageQueue = messageQueue;
+            this.context = context;
         }
 
         public IGaugeRepository GaugeRepository { get; }

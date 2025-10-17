@@ -27,7 +27,7 @@ public class RabbitMQProvider : IDisposable
         }
         catch
         {
-            
+
         }
     }
 

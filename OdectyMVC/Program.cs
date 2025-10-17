@@ -1,16 +1,8 @@
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.Identity.Web;
-using Microsoft.OpenApi.Models;
-using OdectyMVC;
 using OdectyMVC.Application;
 using OdectyMVC.Contracts;
 using OdectyMVC.DataLayer;
 using OdectyMVC.Middleware;
 using OdectyMVC.Options;
-using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
@@ -27,7 +19,7 @@ builder.Services.AddScoped<IGaugeListModelRepository, GaugeListModelRepository>(
 builder.Services.AddSingleton<IMessageQueue, MessageQueue>();
 builder.Services.AddSingleton<RabbitMQProvider>();
 builder.Services.AddHostedService<IncomeMessageBackgroundService>();
-builder.Logging.AddEventLog(conf=>conf.SourceName="OdectyMVC");
+builder.Logging.AddEventLog(conf => conf.SourceName = "OdectyMVC");
 
 #if !DEBUG
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)

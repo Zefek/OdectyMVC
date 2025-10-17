@@ -2,7 +2,6 @@
 using OdectyMVC.Contracts;
 using OdectyMVC.Dto;
 using OdectyMVC.Options;
-using System;
 
 namespace OdectyMVC.Application
 {
@@ -13,7 +12,7 @@ namespace OdectyMVC.Application
 
         public GaugeService(IGaugeContext context, IOptions<GaugeImageLocation> options)
         {
-            this.context=context;
+            this.context = context;
             this.options = options;
         }
 

@@ -1,8 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using OdectyMVC.Business;
 using OdectyMVC.Models;
-using System.Text.Json.Serialization;
 
 namespace OdectyMVC.DataLayer
 {
