@@ -1,14 +1,9 @@
-﻿using Microsoft.AspNetCore.Connections;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using OdectyMVC.Business;
 using OdectyMVC.Contracts;
-using OdectyMVC.Dto;
 using OdectyMVC.Options;
 using RabbitMQ.Client;
 using System.Text;
-using System.Threading.Channels;
 
 namespace OdectyMVC.DataLayer
 {
@@ -17,7 +12,7 @@ namespace OdectyMVC.DataLayer
         private readonly IChannel model;
         private readonly IOptions<RabbitMQSettings> options;
 
-        public MessageQueue(RabbitMQProvider rabbitMQProvider, IOptions<RabbitMQSettings> options) 
+        public MessageQueue(RabbitMQProvider rabbitMQProvider, IOptions<RabbitMQSettings> options)
         {
             this.options = options;
             model = rabbitMQProvider.CreateModel().Result;
@@ -25,7 +20,7 @@ namespace OdectyMVC.DataLayer
 
         public async Task Publish(string routingKey, object message, CancellationToken cancellationToken)
         {
-            if(model != null)
+            if (model != null)
             {
                 await model.BasicPublishAsync(options.Value.ExchangeName, routingKey, true, new ReadOnlyMemory<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message))), cancellationToken);
             }

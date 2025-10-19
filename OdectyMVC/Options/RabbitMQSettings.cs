@@ -9,5 +9,5 @@ public class RabbitMQSettings
     public string Password { get; set; }
     public string VirtualHost { get; set; }
     public string ExchangeName { get; set; }
-    public List<QueueMapping> QueueMappings { get; set; }  = new();
+    public List<QueueMapping> QueueMappings { get; set; } = new();
 }

@@ -9,6 +9,7 @@ public class RabbitMQProvider : IDisposable
     private readonly IConnection connection;
     private readonly IOptions<RabbitMQSettings> options;
     private readonly bool connected = false;
+    private bool first = true;
 
     public RabbitMQProvider(IOptions<RabbitMQSettings> options)
     {
@@ -26,7 +27,7 @@ public class RabbitMQProvider : IDisposable
         }
         catch
         {
-            
+
         }
     }
 
@@ -34,27 +35,30 @@ public class RabbitMQProvider : IDisposable
     {
         if (connected)
         {
-            var model = await connection.CreateChannelAsync();
-            await model.ExchangeDeclareAsync(options.Value.ExchangeName, ExchangeType.Direct, true, false, null);
-            foreach (var exchange in options.Value.QueueMappings.Select(q => q.ExchangeName).Distinct())
+            if (first)
             {
-                if (exchange.StartsWith("amq."))
+                using var model = await connection.CreateChannelAsync();
+                await model.ExchangeDeclareAsync(options.Value.ExchangeName, ExchangeType.Direct, true, false, null);
+                foreach (var exchange in options.Value.QueueMappings.Select(q => q.ExchangeName).Distinct())
                 {
-                    continue;
+                    if (exchange.StartsWith("amq."))
+                    {
+                        continue;
+                    }
+                    await model.ExchangeDeclareAsync(exchange, ExchangeType.Direct, true, false, null);
                 }
-                await model.ExchangeDeclareAsync(exchange, ExchangeType.Direct, true, false, null);
+                foreach (var queue in options.Value.QueueMappings.Select(q => q.QueueName).Distinct())
+                {
+                    await model.QueueDeclareAsync(queue, true, false, false, null);
+                }
+                foreach (var map in options.Value.QueueMappings)
+                {
+                    await model.QueueBindAsync(map.QueueName, map.ExchangeName, map.RoutingKey);
+                }
+                first = false;
             }
-            foreach (var queue in options.Value.QueueMappings.Select(q => q.QueueName).Distinct())
-            {
-                await model.QueueDeclareAsync(queue, true, false, false, null);
-            }
-            foreach (var map in options.Value.QueueMappings)
-            {
-                await model.QueueBindAsync(map.QueueName, map.ExchangeName, map.RoutingKey);
-            }
-            return model;
         }
-        return null;
+        return await connection.CreateChannelAsync();
     }
 
     public void Dispose()

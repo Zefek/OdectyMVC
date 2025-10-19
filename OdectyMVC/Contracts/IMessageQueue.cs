@@ -1,6 +1,4 @@
-﻿using OdectyMVC.Business;
-
-namespace OdectyMVC.Contracts
+﻿namespace OdectyMVC.Contracts
 {
     public interface IMessageQueue
     {

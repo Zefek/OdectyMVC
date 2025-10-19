@@ -18,10 +18,12 @@ public class GaugeController : Controller
     }
 
     [HttpPost("{id}")]
-    [Consumes("multipart/form-data")]
-    public async Task<IActionResult> GaugeByImage(int id, IFormFile file, CancellationToken cancellationToken)
+    [Consumes("application/octet-stream")]
+    public async Task<IActionResult> GaugeByImage(int id, CancellationToken cancellationToken)
     {
-        await gaugeService.SaveFileForGauge(id, file, cancellationToken);
+        using var memoryStream = new MemoryStream();
+        await Request.Body.CopyToAsync(memoryStream, cancellationToken);
+        await gaugeService.SaveFileForGauge(id, memoryStream, cancellationToken);
         return Ok();
     }
 }

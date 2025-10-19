@@ -15,7 +15,7 @@ namespace OdectyMVC.Controllers
 
         public HomeController(IGaugeService service)
         {
-            this.service=service;
+            this.service = service;
         }
 
         public async Task<IActionResult> Index(CancellationToken cancellationToken)

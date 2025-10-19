@@ -7,6 +7,6 @@ namespace OdectyMVC.Application
         Task AddNewValue(int gaugeId, decimal value, CancellationToken cancellationToken);
         Task<IEnumerable<GaugeListModel>> GetGaugeList(CancellationToken cancellationToken);
         Task UpdateGaugeState(int gaugeId, decimal value, CancellationToken cancellationToken);
-        Task SaveFileForGauge(int gaugeId, IFormFile file, CancellationToken cancellationToken);
+        Task SaveFileForGauge(int gaugeId, MemoryStream memoryStream, CancellationToken cancellationToken);
     }
 }

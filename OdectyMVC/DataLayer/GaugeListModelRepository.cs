@@ -9,7 +9,7 @@ namespace OdectyMVC.DataLayer
 
         public GaugeListModelRepository(GaugeDbContext gaugeContext)
         {
-            this.gaugeContext=gaugeContext;
+            this.gaugeContext = gaugeContext;
         }
 
         public Task<IEnumerable<GaugeListModel>> GetGaugeList(CancellationToken cancellationToken)
