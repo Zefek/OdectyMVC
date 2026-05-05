@@ -1,0 +1,158 @@
+name: Deploy na IIS site
+
+on:
+  deployment:
+
+  workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: 'ID běhu workflow s artefaktem'
+        required: true
+        type: string
+      artifact_name:
+        description: 'Název artefaktu'
+        required: false
+        default: 'IoTDeployer'
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  deployments: write
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, dotnet]
+    environment: ${{ github.event.deployment.environment || 'manual' }}
+
+    env:
+      ARTIFACT_RUN_ID: ${{ github.event.deployment.payload.artifact_run_id || inputs.artifact_run_id }}
+      ARTIFACT_NAME:   ${{ github.event.deployment.payload.artifact_name   || inputs.artifact_name   || 'IoTDeployer' }}
+      SITE_NAME:       ${{ vars.SITE_NAME }}
+      APP_POOL_NAME:   ${{ vars.APP_POOL_NAME }}
+      TARGET_PATH:     ${{ vars.TARGET_PATH }}
+      WARMUP_URL:      ${{ vars.WARMUP_URL }}   # volitelné, např. http://localhost/
+
+    steps:
+      - name: Kontrola vstupů
+        shell: powershell
+        run: |
+          if (-not $env:ARTIFACT_RUN_ID) { throw 'Chybí artifact_run_id v payloadu deploymentu.' }
+          if (-not $env:SITE_NAME)       { throw 'Chybí proměnná prostředí SITE_NAME (vars.SITE_NAME).' }
+          if (-not $env:APP_POOL_NAME)   { throw 'Chybí proměnná prostředí APP_POOL_NAME (vars.APP_POOL_NAME).' }
+          if (-not $env:TARGET_PATH)     { throw 'Chybí proměnná prostředí TARGET_PATH (vars.TARGET_PATH).' }
+
+      - name: Stažení artefaktu
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ runner.temp }}\deploy_payload
+          run-id: ${{ env.ARTIFACT_RUN_ID }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Odstavení aplikace (app_offline.htm)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path $env:TARGET_PATH)) {
+            New-Item -ItemType Directory -Path $env:TARGET_PATH -Force | Out-Null
+          }
+          $offline = Join-Path $env:TARGET_PATH 'app_offline.htm'
+          @'
+          <!DOCTYPE html>
+          <html lang="cs"><head><meta charset="utf-8"><title>Probíhá údržba</title></head>
+          <body><h1>Probíhá nasazení nové verze aplikace</h1>
+          <p>Aplikace bude za chvíli dostupná.</p></body></html>
+          '@ | Set-Content -Path $offline -Encoding UTF8
+
+          # ANCM má default ~10s na graceful shutdown dotnet.exe (shutdownTimeLimit)
+          Start-Sleep -Seconds 10
+
+      - name: Kopírování souborů
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $attempts = 5
+          for ($i = 1; $i -le $attempts; $i++) {
+            try {
+              # robocopy lépe snese zbylé zámky; /XF vyloučí app_offline.htm z přepisu/mazání
+              $src = Join-Path $env:RUNNER_TEMP 'deploy_payload'
+              & robocopy $src $env:TARGET_PATH /E /XF app_offline.htm /R:3 /W:2 /NFL /NDL /NJH /NJS /NP
+              # robocopy: 0-7 = OK, >=8 = skutečná chyba
+              if ($LASTEXITCODE -ge 8) { throw "robocopy selhalo (exit $LASTEXITCODE)" }
+              $global:LASTEXITCODE = 0
+              break
+            } catch {
+              if ($i -eq $attempts) { throw }
+              $delay = 2 * $i
+              Write-Warning "Pokus $i/$attempts selhal: $($_.Exception.Message). Retry za $delay s."
+              Start-Sleep -Seconds $delay
+            }
+          }
+
+      - name: Generate configs from secrets repo
+        shell: powershell
+        env:
+          SECRETS_SHARE_PATH: ${{ secrets.SECRETS_SHARE_PATH }}
+          SECRETS_SHARE_USER: ${{ secrets.SECRETS_SHARE_USER }}
+          SECRETS_SHARE_PASS: ${{ secrets.SECRETS_SHARE_PASS }}
+          SECRETS_REPO_NAME:  ${{ secrets.SECRETS_REPO_NAME }}
+          DEVICE_NAME:        Odecty
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $secretsDir = Join-Path $env:RUNNER_TEMP 'secrets'
+          $mounted = $false
+
+          try {
+              & net.exe use 'Z:' $env:SECRETS_SHARE_PATH /user:$env:SECRETS_SHARE_USER $env:SECRETS_SHARE_PASS | Out-Null
+              if ($LASTEXITCODE -ne 0) { throw "Failed to mount SMB share (exit $LASTEXITCODE)" }
+              $mounted = $true
+
+              if (Test-Path $secretsDir) { Remove-Item $secretsDir -Recurse -Force }
+              $repoSource = if ($env:SECRETS_REPO_NAME) { "Z:\$env:SECRETS_REPO_NAME" } else { 'Z:\' }
+              git clone --depth=1 $repoSource $secretsDir
+              if ($LASTEXITCODE -ne 0) { throw "git clone failed (exit $LASTEXITCODE)" }
+
+              $deployScript = Join-Path $secretsDir "$env:DEVICE_NAME\deploy.ps1"
+              if (-not (Test-Path $deployScript)) { throw "deploy.ps1 not found at $deployScript" }
+
+              & $deployScript -OutputDir $env:TARGET_PATH
+              if ($LASTEXITCODE -ne 0) { throw "deploy.ps1 failed (exit $LASTEXITCODE)" }
+          }
+          finally {
+              if (Test-Path $secretsDir) {
+                  Remove-Item $secretsDir -Recurse -Force -ErrorAction SilentlyContinue
+              }
+              if ($mounted) {
+                  & net.exe use 'Z:' /delete /yes | Out-Null
+              }
+              $global:LASTEXITCODE = 0
+          }
+
+      - name: Spuštění aplikace (odstranění app_offline.htm)
+        if: always()
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $offline = Join-Path $env:TARGET_PATH 'app_offline.htm'
+          if (Test-Path $offline) { Remove-Item $offline -Force }
+
+          # Volitelná recyklace app poolu - zajistí čistý start ANCM
+          Import-Module WebAdministration -ErrorAction SilentlyContinue
+          if (Get-Module WebAdministration) {
+            $pool = Get-Item "IIS:\AppPools\$env:APP_POOL_NAME" -ErrorAction SilentlyContinue
+            if ($pool) {
+              if ($pool.state -eq 'Started') { Restart-WebAppPool -Name $env:APP_POOL_NAME }
+              else                           { Start-WebAppPool   -Name $env:APP_POOL_NAME }
+            }
+          }
+
+          # Warmup - probudí dotnet.exe, aby první uživatel nečekal na startup
+          if ($env:WARMUP_URL) {
+            try {
+              Invoke-WebRequest -Uri $env:WARMUP_URL -UseBasicParsing -TimeoutSec 60 | Out-Null
+            } catch {
+              Write-Warning "Warmup selhal: $($_.Exception.Message)"
+            }
+          }
