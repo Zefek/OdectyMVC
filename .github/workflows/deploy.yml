@@ -98,7 +98,7 @@ jobs:
           SECRETS_SHARE_USER: ${{ secrets.SECRETS_SHARE_USER }}
           SECRETS_SHARE_PASS: ${{ secrets.SECRETS_SHARE_PASS }}
           SECRETS_REPO_NAME:  ${{ secrets.SECRETS_REPO_NAME }}
-          DEVICE_NAME:        Odecty
+          DEVICE_NAME:        OdectyMVC
         run: |
           $ErrorActionPreference = 'Stop'
           $secretsDir = Join-Path $env:RUNNER_TEMP 'secrets'
