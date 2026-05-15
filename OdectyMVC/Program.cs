@@ -8,9 +8,45 @@ using OdectyMVC.Contracts;
 using OdectyMVC.DataLayer;
 using OdectyMVC.Middleware;
 using OdectyMVC.Options;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Serilog;
+using Serilog.Sinks.OpenTelemetry;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
+
+const string serviceName = "OdectyMVC";
+var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://localhost:4317";
+
+builder.Host.UseSerilog((ctx, lc) => lc
+    .ReadFrom.Configuration(ctx.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.OpenTelemetry(opts =>
+    {
+        opts.Endpoint = otlpEndpoint;
+        opts.Protocol = OtlpProtocol.Grpc;
+        opts.ResourceAttributes = new Dictionary<string, object>
+        {
+            ["service.name"] = serviceName
+        };
+    }));
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService(serviceName))
+    .WithTracing(t => t
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddSource("RabbitMQ.Client.Publisher", "RabbitMQ.Client.Subscriber")
+        .AddOtlpExporter())
+    .WithMetrics(m => m
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddOtlpExporter());
+
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<RabbitMQSettings>(builder.Configuration.GetSection("RabbitMQSettings"));
@@ -25,7 +61,6 @@ builder.Services.AddScoped<IGaugeListModelRepository, GaugeListModelRepository>(
 builder.Services.AddSingleton<IMessageQueue, MessageQueue>();
 builder.Services.AddSingleton<RabbitMQProvider>();
 builder.Services.AddHostedService<IncomeMessageBackgroundService>();
-builder.Logging.AddEventLog(conf => conf.SourceName = "OdectyMVC");
 
 #if !DEBUG
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
