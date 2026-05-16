@@ -194,7 +194,7 @@ jobs:
             }
 
             if ($i -lt $maxAttempts) {
-              Write-Host "Pokus $i/$maxAttempts: $lastError. Zkousim znovu za $delaySec s..."
+              Write-Host "Pokus ${i}/${maxAttempts}: $lastError. Zkousim znovu za $delaySec s..."
               Start-Sleep -Seconds $delaySec
             }
           }
