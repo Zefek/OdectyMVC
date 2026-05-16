@@ -1,11 +1,14 @@
+using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Identity.Web;
 using Microsoft.OpenApi.Models;
 using OdectyMVC;
 using OdectyMVC.Application;
 using OdectyMVC.Contracts;
 using OdectyMVC.DataLayer;
+using OdectyMVC.HealthChecks;
 using OdectyMVC.Middleware;
 using OdectyMVC.Options;
 using OpenTelemetry.Metrics;
@@ -61,6 +64,10 @@ builder.Services.AddScoped<IGaugeListModelRepository, GaugeListModelRepository>(
 builder.Services.AddSingleton<IMessageQueue, MessageQueue>();
 builder.Services.AddSingleton<RabbitMQProvider>();
 builder.Services.AddHostedService<IncomeMessageBackgroundService>();
+
+builder.Services.AddHealthChecks()
+    .AddCheck<RabbitMQHealthCheck>("rabbitmq", tags: new[] { "ready" })
+    .AddCheck<GaugeFileHealthCheck>("gauge-file", tags: new[] { "ready" });
 
 #if !DEBUG
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
@@ -141,6 +148,18 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 #endif
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false,
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+}).AllowAnonymous();
+
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+}).AllowAnonymous();
 
 app.MapControllerRoute(
     name: "default",

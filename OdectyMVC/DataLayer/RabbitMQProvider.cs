@@ -11,6 +11,8 @@ public class RabbitMQProvider : IDisposable
     private readonly bool connected = false;
     private bool first = true;
 
+    public bool IsConnected => connected && connection?.IsOpen == true;
+
     public RabbitMQProvider(IOptions<RabbitMQSettings> options)
     {
         try
