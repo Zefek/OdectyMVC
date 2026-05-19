@@ -1,4 +1,5 @@
-﻿using OdectyMVC.Models;
+using Microsoft.AspNetCore.Mvc;
+using OdectyMVC.Models;
 
 namespace OdectyMVC.Application
 {
@@ -6,7 +7,7 @@ namespace OdectyMVC.Application
     {
         Task AddNewValue(int gaugeId, decimal value, CancellationToken cancellationToken);
         Task<IEnumerable<GaugeListModel>> GetGaugeList(CancellationToken cancellationToken);
-        Task UpdateGaugeState(int gaugeId, decimal value, CancellationToken cancellationToken);
         Task SaveFileForGauge(int gaugeId, MemoryStream memoryStream, CancellationToken cancellationToken);
+        Task<IActionResult> GetLastPhoto(int gaugeId, CancellationToken cancellationToken);
     }
 }
