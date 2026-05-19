@@ -156,3 +156,49 @@ jobs:
               Write-Warning "Warmup selhal: $($_.Exception.Message)"
             }
           }
+
+      - name: Ověření zdraví aplikace
+        shell: powershell
+        env:
+          HEALTH_URL: ${{ vars.HEALTH_URL }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:HEALTH_URL) { throw 'Chybí proměnná HEALTH_URL (vars.HEALTH_URL).' }
+
+          $maxAttempts = 5
+          $delaySec    = 6
+          $lastError   = $null
+          $lastBody    = $null
+
+          for ($i = 1; $i -le $maxAttempts; $i++) {
+            try {
+              $resp = Invoke-WebRequest -Uri $env:HEALTH_URL -UseBasicParsing -TimeoutSec 10
+              if ($resp.StatusCode -eq 200) {
+                Write-Host "Health check OK (pokus $i, status 200)."
+                Write-Host $resp.Content
+                exit 0
+              }
+              $lastError = "HTTP $($resp.StatusCode)"
+              $lastBody  = $resp.Content
+            } catch {
+              $webResp = $_.Exception.Response
+              if ($webResp) {
+                $lastError = "HTTP $([int]$webResp.StatusCode)"
+                try {
+                  $reader   = New-Object System.IO.StreamReader($webResp.GetResponseStream())
+                  $lastBody = $reader.ReadToEnd()
+                } catch { }
+              } else {
+                $lastError = $_.Exception.Message
+              }
+            }
+
+            if ($i -lt $maxAttempts) {
+              Write-Host "Pokus ${i}/${maxAttempts}: $lastError. Zkousim znovu za $delaySec s..."
+              Start-Sleep -Seconds $delaySec
+            }
+          }
+
+          Write-Host "::error::Health check selhal po $maxAttempts pokusech. Posledni chyba: $lastError"
+          if ($lastBody) { Write-Host "Telo posledni odpovedi:`n$lastBody" }
+          exit 1

@@ -1,16 +1,55 @@
+using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Identity.Web;
 using Microsoft.OpenApi.Models;
 using OdectyMVC;
 using OdectyMVC.Application;
 using OdectyMVC.Contracts;
 using OdectyMVC.DataLayer;
+using OdectyMVC.HealthChecks;
 using OdectyMVC.Middleware;
 using OdectyMVC.Options;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Serilog;
+using Serilog.Sinks.OpenTelemetry;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
+
+const string serviceName = "OdectyMVC";
+var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://localhost:4317";
+
+builder.Host.UseSerilog((ctx, lc) => lc
+    .ReadFrom.Configuration(ctx.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.OpenTelemetry(opts =>
+    {
+        opts.Endpoint = otlpEndpoint;
+        opts.Protocol = OtlpProtocol.Grpc;
+        opts.ResourceAttributes = new Dictionary<string, object>
+        {
+            ["service.name"] = serviceName
+        };
+    }));
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService(serviceName))
+    .WithTracing(t => t
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddSource("RabbitMQ.Client.Publisher", "RabbitMQ.Client.Subscriber")
+        .AddOtlpExporter())
+    .WithMetrics(m => m
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddOtlpExporter());
+
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.Configure<RabbitMQSettings>(builder.Configuration.GetSection("RabbitMQSettings"));
@@ -25,7 +64,10 @@ builder.Services.AddScoped<IGaugeListModelRepository, GaugeListModelRepository>(
 builder.Services.AddSingleton<IMessageQueue, MessageQueue>();
 builder.Services.AddSingleton<RabbitMQProvider>();
 builder.Services.AddHostedService<IncomeMessageBackgroundService>();
-builder.Logging.AddEventLog(conf => conf.SourceName = "OdectyMVC");
+
+builder.Services.AddHealthChecks()
+    .AddCheck<RabbitMQHealthCheck>("rabbitmq", tags: new[] { "ready" })
+    .AddCheck<GaugeFileHealthCheck>("gauge-file", tags: new[] { "ready" });
 
 #if !DEBUG
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
@@ -106,6 +148,18 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 #endif
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false,
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+}).AllowAnonymous();
+
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+}).AllowAnonymous();
 
 app.MapControllerRoute(
     name: "default",
