@@ -58,10 +58,7 @@ namespace OdectyMVC.DataLayer
                               ?? (ContentTypeProvider.TryGetContentType(fileName, out var ct) ? ct : "application/octet-stream");
 
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            return new FileStreamResult(stream, contentType)
-            {
-                FileDownloadName = fileName,
-            };
+            return new FileStreamResult(stream, contentType);
         }
 
         private sealed class OdectyStatGaugeDto
