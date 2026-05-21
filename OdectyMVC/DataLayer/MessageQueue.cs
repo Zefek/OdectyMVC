@@ -1,9 +1,9 @@
 ﻿using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using OdectyMVC.Contracts;
 using OdectyMVC.Options;
 using RabbitMQ.Client;
 using System.Text;
+using System.Text.Json;
 
 namespace OdectyMVC.DataLayer
 {
@@ -22,7 +22,7 @@ namespace OdectyMVC.DataLayer
         {
             if (model != null)
             {
-                await model.BasicPublishAsync(options.Value.ExchangeName, routingKey, true, new ReadOnlyMemory<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message))), cancellationToken);
+                await model.BasicPublishAsync(options.Value.ExchangeName, routingKey, true, new ReadOnlyMemory<byte>(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message))), cancellationToken);
             }
         }
     }

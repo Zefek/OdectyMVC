@@ -55,19 +55,28 @@ builder.Services.AddControllersWithViews();
 builder.Services.Configure<RabbitMQSettings>(builder.Configuration.GetSection("RabbitMQSettings"));
 builder.Services.Configure<GaugeImageLocation>(builder.Configuration.GetSection("GaugeImageLocation"));
 builder.Services.Configure<BasicAuthentication>(builder.Configuration.GetSection("BasicAuthentication"));
+builder.Services.Configure<OdectyStatSettings>(builder.Configuration.GetSection("OdectyStat"));
 builder.Services.AddScoped<IGaugeService, GaugeService>();
 builder.Services.AddScoped<IGaugeContext, GaugeContext>();
-builder.Services.AddScoped<GaugeDbContext>();
 
-builder.Services.AddScoped<IGaugeRepository, GaugeRepository>();
-builder.Services.AddScoped<IGaugeListModelRepository, GaugeListModelRepository>();
+var odectyStatBaseUrl = builder.Configuration["OdectyStat:BaseUrl"]
+    ?? throw new InvalidOperationException("Missing configuration: OdectyStat:BaseUrl");
+
+builder.Services.AddHttpClient<IGaugeListModelRepository, GaugeListModelRepository>(c =>
+{
+    c.BaseAddress = new Uri(odectyStatBaseUrl);
+});
+builder.Services.AddHttpClient<OdectyStatHealthCheck>(c =>
+{
+    c.BaseAddress = new Uri(odectyStatBaseUrl);
+});
+
 builder.Services.AddSingleton<IMessageQueue, MessageQueue>();
 builder.Services.AddSingleton<RabbitMQProvider>();
-builder.Services.AddHostedService<IncomeMessageBackgroundService>();
 
 builder.Services.AddHealthChecks()
     .AddCheck<RabbitMQHealthCheck>("rabbitmq", tags: new[] { "ready" })
-    .AddCheck<GaugeFileHealthCheck>("gauge-file", tags: new[] { "ready" });
+    .AddCheck<OdectyStatHealthCheck>("odecty-stat", tags: new[] { "ready" });
 
 #if !DEBUG
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)

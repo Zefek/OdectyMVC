@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OdectyMVC.Application;
 
@@ -25,5 +25,11 @@ public class GaugeController : Controller
         await Request.Body.CopyToAsync(memoryStream, cancellationToken);
         await gaugeService.SaveFileForGauge(id, memoryStream, cancellationToken);
         return Ok();
+    }
+
+    [HttpGet("{id}/lastphoto")]
+    public Task<IActionResult> GetLastPhoto(int id, CancellationToken cancellationToken)
+    {
+        return gaugeService.GetLastPhoto(id, cancellationToken);
     }
 }
