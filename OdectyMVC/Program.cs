@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Identity.Web;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using OdectyMVC;
 using OdectyMVC.Application;
 using OdectyMVC.Contracts;
@@ -99,6 +99,11 @@ builder.Services.Configure<OpenIdConnectOptions>(OpenIdConnectDefaults.Authentic
     {
         OnTokenValidated = context =>
         {
+            if (context.Principal == null)
+            {
+                context.Fail("Unauthorized access");
+                return Task.CompletedTask;
+            }
             var email = context.Principal.FindFirst("preferred_username")?.Value
                         ?? context.Principal.FindFirst(ClaimTypes.Email)?.Value;
             if (string.IsNullOrEmpty(email) || !allowedEmails.Contains(email.ToLowerInvariant()))
@@ -117,19 +122,9 @@ builder.Services.AddSwaggerGen(options =>
         Type = SecuritySchemeType.Http,
         Scheme = "basic",
     });
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
     {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Id = "basic",
-                        Type = ReferenceType.SecurityScheme
-                    }
-                },
-                Array.Empty<string>()
-            }
+        { new OpenApiSecuritySchemeReference("basic", document), Array.Empty<string>().ToList() }
     });
 });
 #else

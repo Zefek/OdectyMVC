@@ -9,7 +9,7 @@ namespace OdectyMVC.DataLayer
 {
     public class MessageQueue : IMessageQueue
     {
-        private readonly IChannel model;
+        private readonly IChannel? model;
         private readonly IOptions<RabbitMQSettings> options;
 
         public MessageQueue(RabbitMQProvider rabbitMQProvider, IOptions<RabbitMQSettings> options)

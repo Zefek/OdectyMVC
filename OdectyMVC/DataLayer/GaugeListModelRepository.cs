@@ -64,8 +64,8 @@ namespace OdectyMVC.DataLayer
         private sealed class OdectyStatGaugeDto
         {
             public int Id { get; set; }
-            public string Description { get; set; }
-            public string Type { get; set; }
+            public string? Description { get; set; }
+            public required string Type { get; set; }
             public decimal LastValue { get; set; }
             public DateTime? LastMeasurementAt { get; set; }
             public bool HasPhoto { get; set; }
