@@ -8,3 +8,6 @@ OdectyMVC/GaugeList.json
 /OdectyMVC/obj
 /OdectyMVC/Properties
 OdectyMVC/OdectyMVC.csproj.user
+
+# Client-side knihovny obnovované přes LibMan (libman.json)
+/OdectyMVC/wwwroot/lib/
