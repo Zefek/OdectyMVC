@@ -2,5 +2,5 @@ namespace OdectyMVC.Options;
 
 public class OdectyStatSettings
 {
-    public string BaseUrl { get; set; }
+    public required string BaseUrl { get; set; }
 }

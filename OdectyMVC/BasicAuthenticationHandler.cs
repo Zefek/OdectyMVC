@@ -24,16 +24,16 @@ public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSc
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Headers.ContainsKey("Authorization"))
+        if (!Request!.Headers.ContainsKey("Authorization"))
             return Task.FromResult(AuthenticateResult.Fail("Missing Authorization Header"));
 
         try
         {
-            var authHeader = AuthenticationHeaderValue.Parse(Request.Headers["Authorization"]);
+            var authHeader = AuthenticationHeaderValue.Parse(Request.Headers["Authorization"]!);
             if (!authHeader.Scheme.Equals("Basic", StringComparison.OrdinalIgnoreCase))
                 return Task.FromResult(AuthenticateResult.Fail("Invalid scheme"));
 
-            var credentials = Encoding.UTF8.GetString(Convert.FromBase64String(authHeader.Parameter)).Split(':');
+            var credentials = Encoding.UTF8.GetString(Convert.FromBase64String(authHeader.Parameter ?? string.Empty)).Split(':');
             var username = credentials[0];
             var password = credentials[1];
 
