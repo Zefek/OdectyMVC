@@ -6,7 +6,7 @@ namespace OdectyMVC.DataLayer;
 
 public class RabbitMQProvider : IDisposable
 {
-    private readonly IConnection connection;
+    private readonly IConnection? connection;
     private readonly IOptions<RabbitMQSettings> options;
     private readonly bool connected = false;
     private bool first = true;
@@ -15,16 +15,15 @@ public class RabbitMQProvider : IDisposable
 
     public RabbitMQProvider(IOptions<RabbitMQSettings> options)
     {
+        this.options = options;
         try
         {
             var factory = new ConnectionFactory();
-            factory.HostName = options.Value.HostName;
-            factory.UserName = options.Value.UserName;
-            factory.Password = options.Value.Password;
-            factory.VirtualHost = options.Value.VirtualHost;
-
+            factory.HostName = this.options.Value.HostName;
+            factory.UserName = this.options.Value.UserName;
+            factory.Password = this.options.Value.Password;
+            factory.VirtualHost = this.options.Value.VirtualHost;
             connection = factory.CreateConnectionAsync().Result;
-            this.options = options;
             connected = true;
         }
         catch
@@ -33,17 +32,17 @@ public class RabbitMQProvider : IDisposable
         }
     }
 
-    public async Task<IChannel> CreateModel()
+    public async Task<IChannel?> CreateModel()
     {
         if (connected)
         {
             if (first)
             {
-                using var model = await connection.CreateChannelAsync();
+                using var model = await connection!.CreateChannelAsync();
                 await model.ExchangeDeclareAsync(options.Value.ExchangeName, ExchangeType.Direct, true, false, null);
                 foreach (var exchange in options.Value.QueueMappings.Select(q => q.ExchangeName).Distinct())
                 {
-                    if (exchange.StartsWith("amq."))
+                    if (exchange == null || exchange.StartsWith("amq."))
                     {
                         continue;
                     }
@@ -55,12 +54,20 @@ public class RabbitMQProvider : IDisposable
                 }
                 foreach (var map in options.Value.QueueMappings)
                 {
+                    if (map.ExchangeName == null || map.RoutingKey == null)
+                    {
+                        continue;
+                    }
                     await model.QueueBindAsync(map.QueueName, map.ExchangeName, map.RoutingKey);
                 }
                 first = false;
             }
         }
-        return await connection.CreateChannelAsync();
+        if (connection != null)
+        {
+            return await connection.CreateChannelAsync();
+        }
+        return null;
     }
 
     public void Dispose()
