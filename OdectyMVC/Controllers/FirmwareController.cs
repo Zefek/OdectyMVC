@@ -18,8 +18,9 @@ public class FirmwareController : Controller
     }
 
     [HttpGet("{deviceName}")]
-    public async Task<IActionResult> GetUpdate(string deviceName, [FromQuery] int version, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetUpdate(string deviceName, [FromHeader(Name = "x-ESP32-version")] string? version, CancellationToken cancellationToken)
     {
-        return await firmwareService.GetUpdate(deviceName, version, cancellationToken);
+        var currentVersion = int.TryParse(version, out var parsed) ? parsed : 0;
+        return await firmwareService.GetUpdate(deviceName, currentVersion, cancellationToken);
     }
 }

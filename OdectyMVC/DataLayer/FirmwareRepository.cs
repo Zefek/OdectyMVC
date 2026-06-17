@@ -36,6 +36,7 @@ namespace OdectyMVC.DataLayer
             var response = await httpClient.GetAsync($"{BasePath}/{encodedName}/firmware", HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
+                response.Dispose();
                 return new NotFoundResult();
             }
             response.EnsureSuccessStatusCode();
@@ -44,11 +45,10 @@ namespace OdectyMVC.DataLayer
                            ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
                            ?? $"{deviceName}.bin";
 
-            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            return new FileStreamResult(stream, "application/octet-stream")
-            {
-                FileDownloadName = fileName
-            };
+            // Content-Length musí zůstat zachovaná: ESP httpUpdate volá http.getSize() a při len <= 0
+            // flashování vůbec nespustí (HTTP_UE_SERVER_NOT_REPORT_SIZE). FileStreamResult by ji ze
+            // síťového (neseekovatelného) streamu nenastavil, proto ji propisujeme z horní odpovědi ručně.
+            return new FirmwareFileResult(response, response.Content.Headers.ContentLength, fileName);
         }
 
         private static FirmwareManifest? ParseManifest(string content)
@@ -84,6 +84,35 @@ namespace OdectyMVC.DataLayer
                 Sha256 = values.GetValueOrDefault("sha256"),
                 Commit = values.GetValueOrDefault("commit"),
             };
+        }
+
+        private sealed class FirmwareFileResult : IActionResult
+        {
+            private readonly HttpResponseMessage upstreamResponse;
+            private readonly long? contentLength;
+            private readonly string fileName;
+
+            public FirmwareFileResult(HttpResponseMessage upstreamResponse, long? contentLength, string fileName)
+            {
+                this.upstreamResponse = upstreamResponse;
+                this.contentLength = contentLength;
+                this.fileName = fileName;
+            }
+
+            public async Task ExecuteResultAsync(ActionContext context)
+            {
+                using var response = upstreamResponse;
+                var httpResponse = context.HttpContext.Response;
+                httpResponse.ContentType = "application/octet-stream";
+                if (contentLength.HasValue)
+                {
+                    httpResponse.ContentLength = contentLength;
+                }
+                httpResponse.Headers.ContentDisposition = $"attachment; filename=\"{fileName}\"";
+
+                await using var stream = await upstreamResponse.Content.ReadAsStreamAsync(context.HttpContext.RequestAborted);
+                await stream.CopyToAsync(httpResponse.Body, context.HttpContext.RequestAborted);
+            }
         }
     }
 }
