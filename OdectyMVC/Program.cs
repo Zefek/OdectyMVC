@@ -57,6 +57,7 @@ builder.Services.Configure<GaugeImageLocation>(builder.Configuration.GetSection(
 builder.Services.Configure<BasicAuthentication>(builder.Configuration.GetSection("BasicAuthentication"));
 builder.Services.Configure<OdectyStatSettings>(builder.Configuration.GetSection("OdectyStat"));
 builder.Services.AddScoped<IGaugeService, GaugeService>();
+builder.Services.AddScoped<IFirmwareService, FirmwareService>();
 builder.Services.AddScoped<IGaugeContext, GaugeContext>();
 
 var odectyStatBaseUrl = builder.Configuration["OdectyStat:BaseUrl"]
@@ -67,6 +68,10 @@ builder.Services.AddHttpClient<IGaugeListModelRepository, GaugeListModelReposito
     c.BaseAddress = new Uri(odectyStatBaseUrl);
 });
 builder.Services.AddHttpClient<OdectyStatHealthCheck>(c =>
+{
+    c.BaseAddress = new Uri(odectyStatBaseUrl);
+});
+builder.Services.AddHttpClient<IFirmwareRepository, FirmwareRepository>(c =>
 {
     c.BaseAddress = new Uri(odectyStatBaseUrl);
 });
