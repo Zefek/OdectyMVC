@@ -38,7 +38,7 @@ namespace OdectyMVC.Application
             return await context.GaugeListModelRepository.GetLastPhoto(gaugeId, cancellationToken);
         }
 
-        public async Task SaveFileForGauge(int gaugeId, MemoryStream memoryStream, CancellationToken cancellationToken)
+        public async Task SaveFileForGauge(int gaugeId, MemoryStream memoryStream, ulong? correlationId, byte[]? transfer, CancellationToken cancellationToken)
         {
             var gauge = await context.GaugeListModelRepository.GetById(gaugeId, cancellationToken);
             if (gauge == null)
@@ -51,7 +51,24 @@ namespace OdectyMVC.Application
             await memoryStream.CopyToAsync(stream, cancellationToken);
             await stream.FlushAsync(cancellationToken);
             await context.MessageQueue.Publish(MessageQueueRoutingKeys.GaugeMVC_Gauge_Fileuploaded,
-                new { GaugeId = gaugeId, Datetime = DateTime.UtcNow, FileName = fileName }, cancellationToken);
+                new { GaugeId = gaugeId, Datetime = DateTime.UtcNow, FileName = fileName, CorrelationId = correlationId }, cancellationToken);
+            if (transfer != null)
+            {
+                await context.MessageQueue.Publish(MessageQueueRoutingKeys.GaugeMVC_Gauge_Transfer,
+                    new { GaugeId = gaugeId, Datetime = DateTime.UtcNow, Data = transfer }, cancellationToken);
+            }
+        }
+
+        public async Task SaveDiagnostics(int gaugeId, byte[] data, CancellationToken cancellationToken)
+        {
+            await context.MessageQueue.Publish(MessageQueueRoutingKeys.GaugeMVC_Gauge_Diagnostics,
+                new { GaugeId = gaugeId, Datetime = DateTime.UtcNow, Data = data }, cancellationToken);
+        }
+
+        public async Task SaveConfig(int gaugeId, byte[] data, CancellationToken cancellationToken)
+        {
+            await context.MessageQueue.Publish(MessageQueueRoutingKeys.GaugeMVC_Gauge_Config,
+                new { GaugeId = gaugeId, Datetime = DateTime.UtcNow, Data = data }, cancellationToken);
         }
     }
 }
