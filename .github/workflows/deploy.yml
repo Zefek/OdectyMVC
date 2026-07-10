@@ -26,15 +26,16 @@ permissions:
 jobs:
   deploy:
     runs-on: [self-hosted, dotnet]
-    environment: ${{ github.event.inputs.environment || 'manual' }}
+    environment: ${{ github.event.inputs.environment }}
 
     env:
       ARTIFACT_RUN_ID: ${{ github.event.inputs.artifact_run_id || inputs.artifact_run_id }}
-      ARTIFACT_NAME:   ${{ github.event.inputs.artifact_name   || inputs.artifact_name   || 'IoTDeployer' }}
+      ARTIFACT_NAME:   ${{ github.event.inputs.artifact_name   || inputs.artifact_name }}
       SITE_NAME:       ${{ vars.SITE_NAME }}
       APP_POOL_NAME:   ${{ vars.APP_POOL_NAME }}
       TARGET_PATH:     ${{ vars.TARGET_PATH }}
-      WARMUP_URL:      ${{ vars.WARMUP_URL }}   # volitelné, např. http://localhost/
+      WARMUP_URL:      ${{ vars.WARMUP_URL }}
+      REPO:            ${{ vars.REPO }}
 
     steps:
       - name: Kontrola vstupů
@@ -44,6 +45,7 @@ jobs:
           if (-not $env:SITE_NAME)       { throw 'Chybí proměnná prostředí SITE_NAME (vars.SITE_NAME).' }
           if (-not $env:APP_POOL_NAME)   { throw 'Chybí proměnná prostředí APP_POOL_NAME (vars.APP_POOL_NAME).' }
           if (-not $env:TARGET_PATH)     { throw 'Chybí proměnná prostředí TARGET_PATH (vars.TARGET_PATH).' }
+          if (-not $env:REPO)            { throw 'Chybí proměnná prostředí REPO (vars.REPO).' }
 
       - name: Stažení artefaktu
         uses: actions/download-artifact@v8
@@ -94,44 +96,13 @@ jobs:
             }
           }
 
-      - name: Generate configs from secrets repo
-        shell: powershell
-        env:
-          SECRETS_SHARE_PATH: ${{ secrets.SECRETS_SHARE_PATH }}
-          SECRETS_SHARE_USER: ${{ secrets.SECRETS_SHARE_USER }}
-          SECRETS_SHARE_PASS: ${{ secrets.SECRETS_SHARE_PASS }}
-          SECRETS_REPO_NAME:  ${{ secrets.SECRETS_REPO_NAME }}
-          DEVICE_NAME:        OdectyMVC
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $secretsDir = Join-Path $env:RUNNER_TEMP 'secrets'
-          $mounted = $false
-
-          try {
-              & net.exe use 'Z:' $env:SECRETS_SHARE_PATH /user:$env:SECRETS_SHARE_USER $env:SECRETS_SHARE_PASS | Out-Null
-              if ($LASTEXITCODE -ne 0) { throw "Failed to mount SMB share (exit $LASTEXITCODE)" }
-              $mounted = $true
-
-              if (Test-Path $secretsDir) { Remove-Item $secretsDir -Recurse -Force }
-              $repoSource = if ($env:SECRETS_REPO_NAME) { "Z:\$env:SECRETS_REPO_NAME" } else { 'Z:\' }
-              git clone --depth=1 $repoSource $secretsDir
-              if ($LASTEXITCODE -ne 0) { throw "git clone failed (exit $LASTEXITCODE)" }
-
-              $deployScript = Join-Path $secretsDir "$env:DEVICE_NAME\deploy.ps1"
-              if (-not (Test-Path $deployScript)) { throw "deploy.ps1 not found at $deployScript" }
-
-              & $deployScript -OutputDir $env:TARGET_PATH
-              if ($LASTEXITCODE -ne 0) { throw "deploy.ps1 failed (exit $LASTEXITCODE)" }
-          }
-          finally {
-              if (Test-Path $secretsDir) {
-                  Remove-Item $secretsDir -Recurse -Force -ErrorAction SilentlyContinue
-              }
-              if ($mounted) {
-                  & net.exe use 'Z:' /delete /yes | Out-Null
-              }
-              $global:LASTEXITCODE = 0
-          }
+      - uses: zefek/GithubActions/Actions/deployConfig@v1
+        with:
+          repo:   ${{ env.REPO }}
+          auth:   ${{ secrets.REPO_TOKEN }}
+          dest:   ${{ runner.temp }}\secrets
+          device: OdectyMVC
+          outdir: ${{ env.TARGET_PATH }}
 
       - name: Spuštění aplikace (odstranění app_offline.htm)
         if: always()
