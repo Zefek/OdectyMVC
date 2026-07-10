@@ -96,7 +96,7 @@ jobs:
             }
           }
 
-      - uses: zefek/GithubActions/Actions/deployConfig@main
+      - uses: zefek/GithubActions/Actions/deployConfig@v1
         with:
           repo:   ${{ env.REPO }}
           auth:   ${{ secrets.REPO_TOKEN }}
