@@ -18,7 +18,11 @@ public class GarageGateway : IGarageGateway
             "internal/garage/command", new { Identity = identity }, cancellationToken);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<GarageAccepted>(cancellationToken);
-        return result!.R;
+        if (result == null)
+        {
+            throw new HttpRequestException("OdectyStat returned an empty garage command response");
+        }
+        return result.R;
     }
 
     private sealed record GarageAccepted(uint R);

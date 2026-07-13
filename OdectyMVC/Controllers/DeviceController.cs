@@ -27,7 +27,22 @@ public class DeviceController : ControllerBase
     {
         var identity = User.Identity?.Name ?? "unknown";
         logger.LogInformation("Garage open requested by {Identity}", identity);
-        var r = await gateway.RequestOpen(identity, cancellationToken);
-        return Accepted(new { r });
+        try
+        {
+            var r = await gateway.RequestOpen(identity, cancellationToken);
+            return Accepted(new GarageCommandResponse(r));
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "Garage command failed to reach OdectyStat for {Identity}", identity);
+            return StatusCode(StatusCodes.Status502BadGateway, "Garage service unavailable");
+        }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogError(ex, "Garage command to OdectyStat timed out for {Identity}", identity);
+            return StatusCode(StatusCodes.Status504GatewayTimeout, "Garage service timed out");
+        }
     }
 }
+
+public record GarageCommandResponse(uint R);
