@@ -8,6 +8,9 @@ public class RabbitMQSettings
     public required string UserName { get; set; }
     public required string Password { get; set; }
     public required string VirtualHost { get; set; }
+    public bool UseTls { get; set; } = true;
+    public int? Port { get; set; }
+    public string? TlsServerName { get; set; }
     public required string ExchangeName { get; set; }
     public List<QueueMapping> QueueMappings { get; set; } = new();
 }
