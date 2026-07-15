@@ -2,7 +2,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OdectyMVC.Options;
 using RabbitMQ.Client;
+using System.Diagnostics;
 using System.Security.Authentication;
+using System.Security.Cryptography;
 
 namespace OdectyMVC.DataLayer;
 
@@ -13,8 +15,7 @@ public class RabbitMQProvider : IAsyncDisposable
     private readonly ILogger<RabbitMQProvider> logger;
     private bool first = true;
     private TimeSpan connectionTimeout = TimeSpan.Zero;
-    private readonly Random random = new Random();
-    private DateTime? lastAttemptTime = null;
+    private long? lastAttemptTimestamp = null;
     private TimeSpan? connectionDelay = null;
     private readonly ConnectionFactory factory;
     private readonly SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
@@ -60,7 +61,7 @@ public class RabbitMQProvider : IAsyncDisposable
 
     private async Task Connect()
     {
-        if (lastAttemptTime.HasValue && connectionDelay.HasValue && (DateTime.Now - lastAttemptTime.Value) < connectionDelay || connection?.IsOpen == true)
+        if (lastAttemptTimestamp.HasValue && connectionDelay.HasValue && Stopwatch.GetElapsedTime(lastAttemptTimestamp.Value) < connectionDelay || connection?.IsOpen == true)
         {
             return;
         }
@@ -71,21 +72,28 @@ public class RabbitMQProvider : IAsyncDisposable
             {
                 if (connection != null)
                 {
-                    try { await connection.CloseAsync(); } catch { }
+                    try
+                    {
+                        await connection.CloseAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogDebug(ex, "Failed to close stale RabbitMQ connection before reconnect.");
+                    }
                     await connection.DisposeAsync();
                     connection = null;
                 }
                 connection = await factory.CreateConnectionAsync();
                 logger.LogInformation("Successfully connected to RabbitMQ at {HostName}", factory.HostName);
-                lastAttemptTime = null;
+                lastAttemptTimestamp = null;
                 connectionDelay = null;
                 first = true;
             }
         }
         catch (Exception ex)
         {
-            lastAttemptTime = DateTime.Now;
-            connectionDelay = connectionTimeout = TimeSpan.FromMilliseconds(Math.Min(connectionTimeout.TotalMilliseconds * 2 + random.Next(0, 5000), 300000));
+            lastAttemptTimestamp = Stopwatch.GetTimestamp();
+            connectionDelay = connectionTimeout = TimeSpan.FromMilliseconds(Math.Min(connectionTimeout.TotalMilliseconds * 2 + RandomNumberGenerator.GetInt32(0, 5000), 300000));
             logger.LogWarning(ex, "Failed to connect to RabbitMQ at {HostName}, retrying in {Delay}ms", factory.HostName, connectionDelay.Value.TotalMilliseconds);
         }
         finally
