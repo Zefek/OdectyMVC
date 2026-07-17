@@ -2,6 +2,7 @@ using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Identity.Web;
 using Microsoft.OpenApi;
 using OdectyMVC;
@@ -74,6 +75,21 @@ builder.Services.AddHttpClient<OdectyStatHealthCheck>(c =>
 builder.Services.AddHttpClient<IFirmwareRepository, FirmwareRepository>(c =>
 {
     c.BaseAddress = new Uri(odectyStatBaseUrl);
+});
+builder.Services.AddHttpClient<IGarageGateway, GarageGateway>(c =>
+{
+    c.BaseAddress = new Uri(odectyStatBaseUrl);
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("garage", o =>
+    {
+        o.PermitLimit = 5;
+        o.Window = TimeSpan.FromMinutes(1);
+        o.QueueLimit = 0;
+    });
 });
 
 builder.Services.AddSingleton<IMessageQueue, MessageQueue>();
@@ -152,6 +168,8 @@ app.UseSwaggerUI();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseRateLimiter();
 
 #if !DEBUG
 app.UseAuthentication();
