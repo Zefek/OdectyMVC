@@ -96,10 +96,9 @@ jobs:
             }
           }
 
-      - uses: zefek/GithubActions/Actions/deployConfig@v1
+      - uses: zefek/GithubActions/Actions/deployConfig@a75062847f709468931daba291681df84c05d24e
         with:
           repo:   ${{ env.REPO }}
-          auth:   ${{ secrets.REPO_TOKEN }}
           dest:   ${{ runner.temp }}\secrets
           device: OdectyMVC
           outdir: ${{ env.TARGET_PATH }}
