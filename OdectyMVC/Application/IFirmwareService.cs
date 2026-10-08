@@ -5,5 +5,6 @@ namespace OdectyMVC.Application
     public interface IFirmwareService
     {
         Task<IActionResult> GetUpdate(string deviceName, int currentVersion, CancellationToken cancellationToken);
+        Task<bool> HasNewerVersion(string deviceName, int currentVersion, CancellationToken cancellationToken);
     }
 }

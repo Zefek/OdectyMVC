@@ -12,10 +12,14 @@ namespace OdectyMVC.Controllers;
 public class GaugeController : Controller
 {
     private readonly IGaugeService gaugeService;
+    private readonly IFirmwareService firmwareService;
+    private readonly ILogger<GaugeController> logger;
 
-    public GaugeController(IGaugeService gaugeService)
+    public GaugeController(IGaugeService gaugeService, IFirmwareService firmwareService, ILogger<GaugeController> logger)
     {
         this.gaugeService = gaugeService;
+        this.firmwareService = firmwareService;
+        this.logger = logger;
     }
 
     [HttpPost("{id}")]
@@ -62,11 +66,31 @@ public class GaugeController : Controller
 
     [HttpPost("{id:int}/diag")]
     [Consumes("application/octet-stream")]
-    public async Task<IActionResult> Diagnostics(int id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Diagnostics(int id, [FromHeader(Name = "X-Device-Name")] string? deviceName, [FromHeader(Name = "x-ESP32-version")] string? version, CancellationToken cancellationToken)
     {
         using var memoryStream = new MemoryStream();
         await Request.Body.CopyToAsync(memoryStream, cancellationToken);
         await gaugeService.SaveDiagnostics(id, memoryStream.ToArray(), cancellationToken);
+
+        if (!string.IsNullOrEmpty(deviceName) && int.TryParse(version, out var currentVersion))
+        {
+            try
+            {
+                if (await firmwareService.HasNewerVersion(deviceName, currentVersion, cancellationToken))
+                {
+                    Response.Headers.Append("X-OTA-Available", "true");
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                logger.LogError(ex, "OTA check failed to reach OdectyStat for device {DeviceName}", deviceName);
+            }
+            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                logger.LogError(ex, "OTA check to OdectyStat timed out for device {DeviceName}", deviceName);
+            }
+        }
+
         return Ok();
     }
 
