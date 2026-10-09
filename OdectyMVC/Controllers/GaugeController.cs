@@ -64,6 +64,16 @@ public class GaugeController : Controller
         return gaugeService.GetLastPhoto(id, cancellationToken);
     }
 
+    private static string SanitizeForLog(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        return value.Replace("\r", string.Empty).Replace("\n", string.Empty);
+    }
+
     [HttpPost("{id:int}/diag")]
     [Consumes("application/octet-stream")]
     public async Task<IActionResult> Diagnostics(int id, [FromHeader(Name = "X-Device-Name")] string? deviceName, [FromHeader(Name = "x-ESP32-version")] string? version, CancellationToken cancellationToken)
@@ -71,6 +81,7 @@ public class GaugeController : Controller
         using var memoryStream = new MemoryStream();
         await Request.Body.CopyToAsync(memoryStream, cancellationToken);
         await gaugeService.SaveDiagnostics(id, memoryStream.ToArray(), cancellationToken);
+        var safeDeviceName = SanitizeForLog(deviceName);
 
         if (!string.IsNullOrEmpty(deviceName) && int.TryParse(version, out var currentVersion))
         {
@@ -83,11 +94,11 @@ public class GaugeController : Controller
             }
             catch (HttpRequestException ex)
             {
-                logger.LogError(ex, "OTA check failed to reach OdectyStat for device {DeviceName}", deviceName);
+                logger.LogError(ex, "OTA check failed to reach OdectyStat for device {DeviceName}", safeDeviceName);
             }
             catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
             {
-                logger.LogError(ex, "OTA check to OdectyStat timed out for device {DeviceName}", deviceName);
+                logger.LogError(ex, "OTA check to OdectyStat timed out for device {DeviceName}", safeDeviceName);
             }
         }
 
