@@ -10,7 +10,7 @@ on:
       artifact_name:
         description: 'Název artefaktu'
         required: false
-        default: 'IoTDeployer'
+        default: 'OdectyMVC'
         type: string
       environment:
         required: true

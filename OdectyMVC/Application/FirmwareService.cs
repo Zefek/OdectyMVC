@@ -13,6 +13,22 @@ namespace OdectyMVC.Application
             this.repository = repository;
         }
 
+        public async Task<bool> HasNewerVersion(string deviceName, int currentVersion, CancellationToken cancellationToken)
+        {
+            if (!IsValidDeviceName(deviceName))
+            {
+                return false;
+            }
+
+            var manifest = await repository.GetManifest(deviceName, cancellationToken);
+            if (manifest == null)
+            {
+                return false;
+            }
+
+            return manifest.Version > currentVersion;
+        }
+
         public async Task<IActionResult> GetUpdate(string deviceName, int currentVersion, CancellationToken cancellationToken)
         {
             if (!IsValidDeviceName(deviceName))
