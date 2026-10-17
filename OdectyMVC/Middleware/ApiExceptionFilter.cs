@@ -28,7 +28,10 @@ public class ApiExceptionFilter : IExceptionFilter
             TaskCanceledException when !httpContext.RequestAborted.IsCancellationRequested => StatusCodes.Status504GatewayTimeout,
             _ => StatusCodes.Status500InternalServerError,
         };
-        logger.LogError(context.Exception, "API request {Method} {Path} failed with {StatusCode}", httpContext.Request.Method, httpContext.Request.Path, statusCode);
+        var sanitizedPath = (httpContext.Request.Path.Value ?? string.Empty)
+            .Replace("\r", string.Empty)
+            .Replace("\n", string.Empty);
+        logger.LogError(context.Exception, "API request {Method} {Path} failed with {StatusCode}", httpContext.Request.Method, sanitizedPath, statusCode);
         var problem = problemDetailsFactory.CreateProblemDetails(httpContext, statusCode);
         context.Result = new ObjectResult(problem) { StatusCode = statusCode };
         context.ExceptionHandled = true;
