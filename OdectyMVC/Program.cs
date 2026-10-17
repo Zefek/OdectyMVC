@@ -55,7 +55,7 @@ builder.Services.AddOpenTelemetry()
         .AddOtlpExporter());
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options => options.Filters.Add<ApiExceptionFilter>());
 builder.Services.Configure<RabbitMQSettings>(builder.Configuration.GetSection("RabbitMQSettings"));
 builder.Services.Configure<GaugeImageLocation>(builder.Configuration.GetSection("GaugeImageLocation"));
 builder.Services.Configure<BasicAuthentication>(builder.Configuration.GetSection("BasicAuthentication"));
