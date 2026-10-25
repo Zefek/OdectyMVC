@@ -17,11 +17,13 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
+using System.Reflection;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
 const string serviceName = "OdectyMVC";
+var serviceVersion = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
 var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://localhost:4317";
 
 builder.Host.UseSerilog((ctx, lc) => lc
@@ -34,12 +36,13 @@ builder.Host.UseSerilog((ctx, lc) => lc
         opts.Protocol = OtlpProtocol.Grpc;
         opts.ResourceAttributes = new Dictionary<string, object>
         {
-            ["service.name"] = serviceName
+            ["service.name"] = serviceName,
+            ["service.version"] = serviceVersion
         };
     }));
 
 builder.Services.AddOpenTelemetry()
-    .ConfigureResource(r => r.AddService(serviceName))
+    .ConfigureResource(r => r.AddService(serviceName, serviceVersion: serviceVersion))
     .WithTracing(t => t
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
@@ -52,7 +55,7 @@ builder.Services.AddOpenTelemetry()
         .AddOtlpExporter());
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options => options.Filters.Add<ApiExceptionFilter>());
 builder.Services.Configure<RabbitMQSettings>(builder.Configuration.GetSection("RabbitMQSettings"));
 builder.Services.Configure<GaugeImageLocation>(builder.Configuration.GetSection("GaugeImageLocation"));
 builder.Services.Configure<BasicAuthentication>(builder.Configuration.GetSection("BasicAuthentication"));
