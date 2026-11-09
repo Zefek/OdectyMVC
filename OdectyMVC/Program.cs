@@ -1,3 +1,4 @@
+using GitHttpBackend.Configuration;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -21,6 +22,7 @@ using System.Reflection;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddConfigRepository(args);
 
 const string serviceName = "OdectyMVC";
 var serviceVersion = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
