@@ -94,15 +94,12 @@ jobs:
             }
           }
 
-      - name: Odstranění konfigurace z adresáře nasazení
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          Get-ChildItem -Path $env:TARGET_PATH -Filter 'appsettings*.json' -File |
-            ForEach-Object {
-              Remove-Item $_.FullName -Force
-              Write-Host "Odstraněno: $($_.Name)"
-            }
+      - uses: zefek/GithubActions/Actions/deployConfig@c1f224d631f3986512d101d3bba268f26d8a5aa3
+        with:
+          repo:   ${{ env.REPO }}
+          dest:   ${{ runner.temp }}\secrets
+          device: OdectyMVC
+          outdir: ${{ env.TARGET_PATH }}
 
       - name: Spuštění aplikace (odstranění app_offline.htm)
         if: always()
